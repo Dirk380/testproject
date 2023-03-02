@@ -1,0 +1,49 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: disallow-latest-tag
+  annotations:
+    policies.kyverno.io/title: Disallow Latest Tag
+    policies.kyverno.io/category: Best Practices
+    policies.kyverno.io/minversion: 1.6.0
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/subject: Pod
+    policies.kyverno.io/description: >-
+      The ':latest' tag is mutable and can lead to unexpected errors if the
+      image changes. A best practice is to use an immutable tag that maps to
+      a specific version of an application Pod. This policy validates that the image
+      specifies a tag and that it is not called `latest`.      
+spec:
+  # The `validationFailureAction` tells Kyverno if the resource being validated should be allowed but reported (`Audit`) or blocked (`Enforce`).
+  validationFailureAction: enforce
+  background: true
+  # The `rules` is one or more rules which must be true.
+  rules:
+  - name: require-image-tag
+    # The `match` statement sets the scope of what will be checked. In this case, it is any `Namespace` resource.
+    match:
+      any:
+      - resources:
+          kinds:
+          - Pod
+    # The `validate` statement tries to positively check what is defined. If the statement, when compared with the requested resource, is true, it is allowed. If false, it is blocked.
+    validate:
+      # The `message` is what gets displayed to a user if this rule fails validation.
+      message: "An image tag is required."
+      # The `pattern` object defines what pattern will be checked in the resource. In this case, it wil check if an image has a tack, then it will block all images with The Latest tag`.
+      pattern:
+        spec:
+          containers:
+          - image: "*:*"
+  - name: validate-image-tag
+    match:
+      any:
+      - resources:
+          kinds:
+          - Pod
+    validate:
+      message: "Using a mutable image tag e.g. 'latest' is not allowed."
+      pattern:
+        spec:
+          containers:
+          - image: "!*:latest"
